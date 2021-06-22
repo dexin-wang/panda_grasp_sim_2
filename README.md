@@ -15,4 +15,6 @@ python3 main_sim_grasp_urdf.py
 
 操作说明在运行脚本里写了。
 
+运行程序需要的obj和urdf可以在我的google网盘中下载: https://drive.google.com/drive/folders/1wthmGOocuzXH5bAyxm3zEzwB4WikEfVI?usp=sharing
+
 任何问题可以联系dexinwang@mail.sdu.edu.cn
