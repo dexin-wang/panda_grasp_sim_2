@@ -291,74 +291,7 @@ class SimEnv(object):
         cv2.imwrite(save_path + '/camera_depth.png', tool.depth2Gray(im_depthCamera))
         cv2.imwrite(save_path + '/camera_depth_rev.png', tool.depth2Gray(im_depthCamera_rev))
 
-
-        # ======================== 渲染桌面深度图 ========================
-        print('>> 渲染桌面深度图...')
-        depth_map = np.zeros((int(size[0] / unit), int(size[1] / unit)), dtype=np.float)
-        mask_map = np.zeros((int(size[0] / unit), int(size[1] / unit)), dtype=np.uint8)
-        for i in range(self.num_urdf):
-            print('正在渲染... {}/{}: {}'.format(i+1, len(self.urdfs_id), self.urdfs_id[i]))
-
-            # 获取obj当前位姿
-            offset, quaternion =  self.p.getBasePositionAndOrientation(self.urdfs_id[i])    # 相对于URDF坐标系  从URDF到物体坐标系的转换关系
-
-            # 当物体在托盘外部，不进行渲染
-            # if offset[2] < 0 or abs(offset[0]) > 0.3 or abs(offset[1]) > 0.3:
-            if abs(offset[0]) > 0.3 or abs(offset[1]) > 0.3:
-                print('>>> 超出范围: ', self.urdfs_id[i])
-                print('offset = ', offset)
-                # raise EOFError
-
-            # 计算从obj坐标系到URDF坐标系的变换矩阵
-            # 平移：self.xyz [-0.019, 0.019, -0.019]  旋转: 欧拉角[1.570796, 0, 0]
-            # (1) 欧拉角->四元数
-            orn = self.p.getQuaternionFromEuler([1.570796, 0, 0])
-            # (2) 四元数->旋转矩阵
-            rot = tool.quaternion_to_rotation_matrix(orn)
-            # (3) 计算变换矩阵
-            mat = tool.getTransfMat(self.urdfs_xyz[i], rot)
-
-            # 获取obj文件路径
-            objURDF_name = self.urdfs_filename[i].replace('.urdf', '.obj')      # 单物体时使用
-
-            # 读取obj文件，并根据scale缩放
-            mesh = Mesh(objURDF_name, self.urdfs_scale[i])
-
-            # 计算物体的变换矩阵(从URDF坐标系到物体坐标系)
-            rotate_mat = tool.quaternion_to_rotation_matrix(quaternion)  # 四元数转旋转矩阵
-            transMat = tool.getTransfMat(offset, rotate_mat)
-
-            transMat = np.matmul(transMat, mat) # !!!! 注意乘的顺序, 使用
-
-            # 根据旋转矩阵调整mesh顶点坐标
-            mesh.transform(transMat)
-
-            t = time.time()
-            # 渲染空间深度图(相对于桌面)和 mask
-            depth_obj = mesh.renderTableImg(self.urdfs_id[i], size=size, unit=unit)
-            print('渲染耗时: {:.3f}s'.format(time.time()-t))
-
-            # mask_rc = depth_obj > depth_map
-            # mask_r, mask_c = np.where(mask_rc)
-            mask_map[depth_obj > depth_map] = self.urdfs_id[i]  # 更新mask
-            
-            depth_map = np.maximum(depth_map, depth_obj)        # 更新桌面深度图
-        
-        # 保存图像
-        # print('>> 保存桌面深度图')
-        scio.savemat(save_path + '/table_depth.mat', {'A':depth_map})
-        scio.savemat(save_path + '/table_mask.mat', {'A':mask_map})
-        cv2.imwrite(save_path + '/table_depth.png', tool.depth2Gray(depth_map))
-
         print('>> 渲染结束')
-
-        # ======================== 压缩文件夹 ========================
-        # tool.zip_file(save_path)
-        # print('>> 压缩完成')
-
-        # ======================== 删除文件夹 ========================
-        # shutil.rmtree(save_path)
-        # print('>> 删除文件夹完成')
 
 
 
