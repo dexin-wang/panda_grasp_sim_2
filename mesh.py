@@ -142,68 +142,6 @@ class Mesh:
         # print(points.shape)
         new_points = np.matmul(mat, points)[:-1, :]
         self.points = new_points.T  # 转置  (n, 3)
-    
-    def renderTableImg(self, mask_id, size=(0.8, 0.8), unit=0.001):
-        """
-        渲染相对于水平面的深度图和 obj mask，每个点之间的间隔为0.5mm
-        size: (h, w) 单位 m
-
-        算法流程:   
-            方法1: 计算每个三角网格所在的平面方程，计算位于三角区域内的点(x,y)，带入平面方程，得到深度z
-            方法2: 根据mesh顶点计算空间中的离散深度，对于在物体区域内(前述离散点的外包络)但深度为0的点，根据离它最近的三个点的插值计算深度
-        """
-
-        # 初始化深度图像
-        depth_map = np.zeros((int(size[0] / unit), int(size[1] / unit)), dtype=np.float)
-        for face in self.faces:
-            pt1 = self.points[face[0] - 1]  # xyz m
-            pt2 = self.points[face[1] - 1]
-            pt3 = self.points[face[2] - 1]
-            # 计算三角网格所在平面方程 xyz -> 平面
-            plane_a, plane_b, plane_c, plane_d = clacPlane(pt1, pt2, pt3)    # ABC  Ax+By+C=z
-            if plane_c == 0:
-                continue
-            plane = np.array([-1*plane_a/plane_c, -1*plane_b/plane_c, -1*plane_d/plane_c])
-
-            # 将三角坐标转化为像素坐标
-            pt1_pixel = [pt1[0] / unit, pt1[1] / unit]  # xy 像素 float
-            pt2_pixel = [pt2[0] / unit, pt2[1] / unit]
-            pt3_pixel = [pt3[0] / unit, pt3[1] / unit]
-            # 获取三角形内的像素坐标 (x,y)
-            pts_pixel = ptsInTriangle(pt1_pixel, pt2_pixel, pt3_pixel)
-
-            if len(pts_pixel) == 0:
-                continue
-
-            # 像素坐标转化为实际坐标 m
-            pts = np.array(pts_pixel, dtype=np.float) * unit  # (n, 2) m
-            # 带入平面方程，计算深度 m
-            ones = np.ones((pts.shape[0], 1))
-            pts = np.hstack((pts, ones))
-            depth = np.matmul(pts, plane.reshape((3,1))).reshape((-1,))
-            # 将像素坐标pts_pixel转换到图像坐标系下
-            pts_pixel = np.array(pts_pixel, dtype=np.int64)
-            xs, ys = pts_pixel[:, 0], pts_pixel[:, 1]
-            rows = ys * -1 + int(round(depth_map.shape[0] / 2))
-            cols = xs + int(round(depth_map.shape[0] / 2))
-            # 生成深度图像 pts_pixel depth
-            depth_map[rows, cols] = np.maximum(depth_map[rows, cols], depth)
-        
-        return depth_map
-
-
-# 绘制3D散点
-# fig = plt.figure()
-# ax1 = plt.axes(projection='3d')
-
-# xs = points[:, 0]
-# ys = points[:, 1]
-# zs = points[:, 2]
-
-# ax1.scatter3D(xs,ys,zs, cmap='Blues')  #绘制散点图
-# plt.show()
-
-# print(points)
 
 
 if __name__ == "__main__":
